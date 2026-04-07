@@ -8,12 +8,8 @@ class HardwareMonitorProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  // Stream subscription replaces the old polling Timer
   StreamSubscription<Map<String, dynamic>>? _streamSubscription;
 
-  // ─────────────────────────────────────────────
-  // Getters
-  // ─────────────────────────────────────────────
   Map<String, dynamic> get stats => _stats;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -28,57 +24,8 @@ class HardwareMonitorProvider extends ChangeNotifier {
           ?.toDouble();
   double? get cpuTemp => cpuTemperature;
 
-  // ─────────────────────────────────────────────
-  // Companion state
-  // ─────────────────────────────────────────────
-  String get companionMood {
-    if (_stats.isEmpty) return 'waiting';
-    if ((batteryLevel ?? 100) <= 15) return 'sleepy';
-    if ((cpuTemperature ?? 0) >= 80 || (cpuUsage ?? 0) >= 85) {
-      return 'overheated';
-    }
-    if ((cpuUsage ?? 0) >= 60) return 'busy';
-    return 'chill';
-  }
-
-  String get companionMessage {
-    switch (companionMood) {
-      case 'sleepy':
-        return 'Battery is low, ByteBuddy wants a charger.';
-      case 'overheated':
-        return 'System is toasty. Time to cool things down.';
-      case 'busy':
-        return 'Your machine is hustling right now.';
-      case 'chill':
-        return 'Everything feels smooth and balanced.';
-      default:
-        return 'Waiting for the first health check.';
-    }
-  }
-
-  String get companionFace {
-    switch (companionMood) {
-      case 'sleepy':
-        return '(-.-)Zzz';
-      case 'overheated':
-        return '(o_o;)';
-      case 'busy':
-        return '(>_<)';
-      case 'chill':
-        return '(^_^)';
-      default:
-        return '(._.)';
-    }
-  }
-
-  // ─────────────────────────────────────────────
-  // Stream lifecycle
-  // ─────────────────────────────────────────────
-
-  /// Start listening to the native EventChannel stream.
-  /// [intervalMs] controls how often native pushes a new snapshot.
   void startMonitoring({int intervalMs = 2000}) {
-    stopMonitoring(); // cancel any existing subscription first
+    stopMonitoring();
 
     _isLoading = true;
     _error = null;
@@ -86,10 +33,10 @@ class HardwareMonitorProvider extends ChangeNotifier {
 
     _streamSubscription = HardwareMonitor.statsStream(intervalMs: intervalMs)
         .listen(
-          _onStatsReceived,
-          onError: _onStreamError,
-          cancelOnError: false, // keep stream alive on transient errors
-        );
+      _onStatsReceived,
+      onError: _onStreamError,
+      cancelOnError: false,
+    );
   }
 
   void stopMonitoring() {
@@ -97,16 +44,10 @@ class HardwareMonitorProvider extends ChangeNotifier {
     _streamSubscription = null;
   }
 
-  // ─────────────────────────────────────────────
-  // On-demand fetches (MethodChannel — still available)
-  // ─────────────────────────────────────────────
-
-  /// Fetch all stats in one call.
   Future<void> fetchSystemStats() async {
     await _fetchOnce(useCombinedEndpoint: true);
   }
 
-  /// Fetch each stat individually and merge.
   Future<void> refreshStats({bool useCombinedEndpoint = false}) async {
     await _fetchOnce(useCombinedEndpoint: useCombinedEndpoint);
   }
@@ -147,9 +88,6 @@ class HardwareMonitorProvider extends ChangeNotifier {
     return {for (final r in results) ...r};
   }
 
-  // ─────────────────────────────────────────────
-  // Stream callbacks
-  // ─────────────────────────────────────────────
   void _onStatsReceived(Map<String, dynamic> incoming) {
     _stats = {..._stats, ...incoming};
     _isLoading = false;
@@ -165,9 +103,6 @@ class HardwareMonitorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─────────────────────────────────────────────
-  // Dispose
-  // ─────────────────────────────────────────────
   @override
   void dispose() {
     stopMonitoring();

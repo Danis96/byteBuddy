@@ -4,23 +4,14 @@ import 'package:flutter/services.dart';
 class HardwareMonitor {
   static const _methodChannel = MethodChannel('com.bytebuddy/hardware_stats');
 
-  static const _eventChannel = EventChannel(
-    'com.bytebuddy/hardware_stats_stream',
-  );
+  static const _eventChannel = EventChannel('com.bytebuddy/hardware_stats_stream');
 
-  // ─────────────────────────────────────────────
-  // Live stream — preferred for real-time UI
-  // Pass intervalMs to control how often native pushes data.
-  // ─────────────────────────────────────────────
   static Stream<Map<String, dynamic>> statsStream({int intervalMs = 2000}) {
     return _eventChannel
         .receiveBroadcastStream(intervalMs)
         .map((event) => Map<String, dynamic>.from(event as Map));
   }
 
-  // ─────────────────────────────────────────────
-  // On-demand MethodChannel calls (still available)
-  // ─────────────────────────────────────────────
   static Future<Map<String, dynamic>> getSystemStats() =>
       _invokeMapMethod('getSystemStats');
 
@@ -41,9 +32,6 @@ class HardwareMonitor {
 
   static Future<Map<String, dynamic>> getCpuTemp() => getCpuTemperature();
 
-  // ─────────────────────────────────────────────
-  // Internal helper
-  // ─────────────────────────────────────────────
   static Future<Map<String, dynamic>> _invokeMapMethod(String method) async {
     try {
       final result = await _methodChannel.invokeMethod(method);
