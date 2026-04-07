@@ -6,6 +6,7 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../provider/companion_provider.dart';
 import '../../provider/hardware_monitor_provider.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -70,9 +71,9 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<HardwareMonitorProvider>(
-      builder: (context, monitor, child) {
-        final statusColor = _statusColor(monitor.companionMood);
+    return Consumer2<HardwareMonitorProvider, CompanionProvider>(
+      builder: (context, monitor, companion, child) {
+        final statusColor = _statusColor(companion.moodKey);
 
         return Scaffold(
           backgroundColor: const Color(0xFF1D2438),
@@ -85,7 +86,8 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener {
               final columns = width >= 760 ? 3 : (compact ? 1 : 2);
               final shellPadding = width < 440 ? 14.0 : 20.0;
               final orbSize = narrow ? 92.0 : (width < 620 ? 108.0 : 114.0);
-              final gridAspectRatio = columns == 1 ? 1.9 : (width > 700 ? 1.28 : 1.42);
+              final gridAspectRatio =
+              columns == 1 ? 1.9 : (width > 700 ? 1.28 : 1.42);
               final horizontalInset = width < 380 ? 10.0 : 14.0;
               final spacing = width < 420 ? 12.0 : 14.0;
               final allowScroll = height < 760 || columns == 1;
@@ -151,16 +153,20 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener {
               Widget content = Column(
                 children: [
                   _StatusBanner(
-                    title: monitor.companionMood.toUpperCase(),
-                    message: monitor.companionMessage,
+                    title: companion.moodKey.toUpperCase(),
+                    message: companion.message,
                     color: statusColor,
                     isLoading: monitor.isLoading,
-                    onRefresh: monitor.refreshStats,
+                    onRefresh: () => monitor.refreshStats(),
                     onHide: windowManager.hide,
                     compact: compact,
                   ),
                   SizedBox(height: compact ? 18 : 22),
-                  _BuddyOrb(color: statusColor, size: orbSize),
+                  _BuddyOrb(
+                    color: statusColor,
+                    size: orbSize,
+                    mood: companion.mood,
+                  ),
                   SizedBox(height: compact ? 18 : 24),
                   GridView.builder(
                     shrinkWrap: true,
@@ -241,111 +247,94 @@ class _MyHomePageState extends State<MyHomePage> with TrayListener {
         return const Color(0xFFFFB133);
       case 'overheated':
         return const Color(0xFFFF5D73);
+      case 'hungry':
+        return const Color(0xFFFF8C42);
       case 'busy':
         return const Color(0xFFB05BFF);
+      case 'relieved':
+        return const Color(0xFF58D68D);
+      case 'bored':
+        return const Color(0xFF8899AA);
+      case 'waiting':
+        return const Color(0xFF7E8CA3);
       case 'chill':
         return const Color(0xFF58D7FF);
       default:
         return const Color(0xFF58D7FF);
     }
   }
+  }
 
   String _formatPercent(double? value) {
-    if (value == null || value < 0) {
-      return '--';
-    }
+    if (value == null || value < 0) return '--';
     return '${value.toStringAsFixed(1)}%';
   }
 
   String _formatCompactPercent(double? value) {
-    if (value == null || value < 0) {
-      return '--';
-    }
+    if (value == null || value < 0) return '--';
     return '${value.round()}%';
   }
 
   String _formatBattery(int? value) {
-    if (value == null || value < 0) {
-      return '--';
-    }
+    if (value == null || value < 0) return '--';
     return '$value%';
   }
 
   String _formatCompactBattery(int? value) {
-    if (value == null || value < 0) {
-      return '--';
-    }
+    if (value == null || value < 0) return '--';
     return '$value%';
   }
 
   String _formatMemory(int? value) {
-    if (value == null || value <= 0) {
-      return '--';
-    }
+    if (value == null || value <= 0) return '--';
     final gb = value / 1024;
     return '${gb.toStringAsFixed(1)} GB';
   }
 
   String _formatMemoryPercent(int? value) {
-    if (value == null || value <= 0) {
-      return '--';
-    }
+    if (value == null || value <= 0) return '--';
     return '${(_memoryProgress(value) * 100).round()}%';
   }
 
   String _formatFanValue(int? value) {
-    if (value == null || value <= 0) {
-      return '--';
-    }
+    if (value == null || value <= 0) return '--';
     return '$value';
   }
 
   String _formatFanPercent(int? value) {
-    if (value == null || value <= 0) {
-      return '--';
-    }
+    if (value == null || value <= 0) return '--';
     return '${(_fanProgress(value) * 100).round()}%';
   }
 
   String _formatTemperature(double? value) {
-    if (value == null || value < 0) {
-      return '--';
-    }
+    if (value == null || value < 0) return '--';
     return '${value.toStringAsFixed(1)}°C';
   }
 
   String _formatTempPercent(double? value) {
-    if (value == null || value < 0) {
-      return '--';
-    }
+    if (value == null || value < 0) return '--';
     return '${(_tempProgress(value) * 100).round()}%';
   }
 
   double _memoryProgress(int? value) {
-    if (value == null || value <= 0) {
-      return 0;
-    }
+    if (value == null || value <= 0) return 0;
     return _safeUnit(value / 16384);
   }
 
   double _fanProgress(int? value) {
-    if (value == null || value <= 0) {
-      return 0;
-    }
+    if (value == null || value <= 0) return 0;
     return _safeUnit(value / 5000);
   }
 
   double _tempProgress(double? value) {
-    if (value == null || value < 0) {
-      return 0;
-    }
+    if (value == null || value < 0) return 0;
     return _safeUnit(value / 100);
   }
 
   double _safeUnit(num value) {
     return value.clamp(0, 1).toDouble();
   }
-}
+
 
 class _StatusBanner extends StatelessWidget {
   const _StatusBanner({
@@ -369,7 +358,12 @@ class _StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(compact ? 14 : 18, compact ? 14 : 16, compact ? 14 : 16, compact ? 14 : 16),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 14 : 18,
+        compact ? 14 : 16,
+        compact ? 14 : 16,
+        compact ? 14 : 16,
+      ),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
@@ -377,7 +371,9 @@ class _StatusBanner extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: const Color(0xFF45C9FF).withValues(alpha: 0.55)),
+        border: Border.all(
+          color: const Color(0xFF45C9FF).withValues(alpha: 0.55),
+        ),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.24),
@@ -389,61 +385,71 @@ class _StatusBanner extends StatelessWidget {
       ),
       child: compact
           ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _BannerStatusIcon(compact: compact),
-                    const SizedBox(width: 12),
-                    Expanded(child: _BannerText(title: title, message: message, compact: compact)),
-                  ],
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _BannerStatusIcon(compact: compact),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _BannerText(
+                  title: title,
+                  message: message,
+                  compact: compact,
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    _BannerButton(
-                      icon: isLoading ? null : Icons.refresh_rounded,
-                      isLoading: isLoading,
-                      onTap: isLoading ? null : onRefresh,
-                    ),
-                    const SizedBox(width: 8),
-                    _BannerButton(
-                      icon: Icons.close_rounded,
-                      isLoading: false,
-                      onTap: onHide,
-                    ),
-                  ],
-                ),
-              ],
-            )
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _BannerButton(
+                icon: isLoading ? null : Icons.refresh_rounded,
+                isLoading: isLoading,
+                onTap: isLoading ? null : onRefresh,
+              ),
+              const SizedBox(width: 8),
+              _BannerButton(
+                icon: Icons.close_rounded,
+                isLoading: false,
+                onTap: onHide,
+              ),
+            ],
+          ),
+        ],
+      )
           : Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _BannerStatusIcon(compact: compact),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _BannerText(title: title, message: message, compact: compact),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  children: [
-                    _BannerButton(
-                      icon: isLoading ? null : Icons.refresh_rounded,
-                      isLoading: isLoading,
-                      onTap: isLoading ? null : onRefresh,
-                    ),
-                    const SizedBox(height: 8),
-                    _BannerButton(
-                      icon: Icons.close_rounded,
-                      isLoading: false,
-                      onTap: onHide,
-                    ),
-                  ],
-                ),
-              ],
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _BannerStatusIcon(compact: compact),
+          const SizedBox(width: 14),
+          Expanded(
+            child: _BannerText(
+              title: title,
+              message: message,
+              compact: compact,
             ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            children: [
+              _BannerButton(
+                icon: isLoading ? null : Icons.refresh_rounded,
+                isLoading: isLoading,
+                onTap: isLoading ? null : onRefresh,
+              ),
+              const SizedBox(height: 8),
+              _BannerButton(
+                icon: Icons.close_rounded,
+                isLoading: false,
+                onTap: onHide,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -514,17 +520,23 @@ class _BannerText extends StatelessWidget {
 }
 
 class _BuddyOrb extends StatelessWidget {
-  const _BuddyOrb({required this.color, required this.size});
+  const _BuddyOrb({
+    required this.color,
+    required this.size,
+    required this.mood,
+  });
 
   final Color color;
   final double size;
+  final CompanionMood mood;
 
   @override
   Widget build(BuildContext context) {
-    final dotSize = size * 0.08;
+    final eyeSize = size * 0.08;
     final eyeGap = size * 0.16;
     final mouthWidth = size * 0.22;
     final mouthHeight = size * 0.09;
+    final faceColor = const Color(0xFF9BE9C4);
 
     return Center(
       child: Container(
@@ -544,27 +556,247 @@ class _BuddyOrb extends StatelessWidget {
             BoxShadow(
               color: color.withValues(alpha: 0.32),
               blurRadius: 16,
-              spreadRadius: 0,
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _FaceDot(size: dotSize),
-                SizedBox(width: eyeGap),
-                _FaceDot(size: dotSize),
-              ],
+            _OrbEyes(
+              mood: mood,
+              eyeSize: eyeSize,
+              eyeGap: eyeGap,
+              color: faceColor,
+              size: size,
             ),
             SizedBox(height: size * 0.12),
-            _SmileLine(width: mouthWidth, height: mouthHeight),
+            _OrbMouth(
+              mood: mood,
+              width: mouthWidth,
+              height: mouthHeight,
+              color: faceColor,
+              size: size,
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _OrbEyes extends StatelessWidget {
+  const _OrbEyes({
+    required this.mood,
+    required this.eyeSize,
+    required this.eyeGap,
+    required this.color,
+    required this.size,
+  });
+
+  final CompanionMood mood;
+  final double eyeSize;
+  final double eyeGap;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (mood) {
+      case CompanionMood.sleepy:
+        return Text(
+          '-   -',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: size * 0.12,
+            letterSpacing: size * 0.02,
+          ),
+        );
+
+      case CompanionMood.bored:
+        return Text(
+          '-   -',
+          style: TextStyle(
+            color: color.withValues(alpha: 0.9),
+            fontWeight: FontWeight.w700,
+            fontSize: size * 0.11,
+            letterSpacing: size * 0.02,
+          ),
+        );
+
+      case CompanionMood.waiting:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _FaceDot(size: eyeSize * 0.75),
+            SizedBox(width: eyeGap),
+            _FaceDot(size: eyeSize * 0.75),
+          ],
+        );
+
+      case CompanionMood.hungry:
+        return Text(
+          'o   o',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: size * 0.11,
+            letterSpacing: size * 0.02,
+          ),
+        );
+
+      case CompanionMood.overheated:
+        return Text(
+          'o   o',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: size * 0.11,
+            letterSpacing: size * 0.02,
+          ),
+        );
+
+      case CompanionMood.busy:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Transform.rotate(
+              angle: -0.15,
+              child: _FaceDot(size: eyeSize),
+            ),
+            SizedBox(width: eyeGap),
+            Transform.rotate(
+              angle: 0.15,
+              child: _FaceDot(size: eyeSize),
+            ),
+          ],
+        );
+
+      case CompanionMood.relieved:
+      case CompanionMood.chill:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _FaceDot(size: eyeSize),
+            SizedBox(width: eyeGap),
+            _FaceDot(size: eyeSize),
+          ],
+        );
+    }
+  }
+}
+
+class _OrbMouth extends StatelessWidget {
+  const _OrbMouth({
+    required this.mood,
+    required this.width,
+    required this.height,
+    required this.color,
+    required this.size,
+  });
+
+  final CompanionMood mood;
+  final double width;
+  final double height;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (mood) {
+      case CompanionMood.sleepy:
+        return Container(
+          width: width * 0.9,
+          height: 2,
+          color: color.withValues(alpha: 0.9),
+        );
+
+      case CompanionMood.overheated:
+        return Text(
+          'o',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: size * 0.14,
+          ),
+        );
+
+      case CompanionMood.hungry:
+        return Text(
+          '⌂',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: size * 0.12,
+          ),
+        );
+
+      case CompanionMood.busy:
+        return Container(
+          width: width,
+          height: 3,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        );
+
+      case CompanionMood.bored:
+        return Container(
+          width: width * 0.8,
+          height: 2,
+          color: color.withValues(alpha: 0.85),
+        );
+
+      case CompanionMood.relieved:
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: color, width: 3),
+            ),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
+          ),
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Container(
+              width: size * 0.04,
+              height: size * 0.04,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+
+      case CompanionMood.waiting:
+        return Container(
+          width: width * 0.45,
+          height: width * 0.45,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+        );
+
+      case CompanionMood.chill:
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: color, width: 3),
+            ),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
+          ),
+        );
+    }
   }
 }
 
@@ -581,27 +813,6 @@ class _FaceDot extends StatelessWidget {
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         color: Color(0xFF9BE9C4),
-      ),
-    );
-  }
-}
-
-class _SmileLine extends StatelessWidget {
-  const _SmileLine({required this.width, required this.height});
-
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFF9BE9C4), width: 3),
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
       ),
     );
   }
@@ -633,7 +844,12 @@ class _MetricCard extends StatelessWidget {
     final ringSize = compact ? 76.0 : 88.0;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(compact ? 14 : 18, compact ? 14 : 18, compact ? 14 : 18, compact ? 12 : 16),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 14 : 18,
+        compact ? 14 : 18,
+        compact ? 14 : 18,
+        compact ? 12 : 16,
+      ),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
@@ -746,14 +962,18 @@ class _BannerButton extends StatelessWidget {
         child: Center(
           child: isLoading
               ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Icon(icon, color: Colors.white.withValues(alpha: 0.92), size: 18),
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          )
+              : Icon(
+            icon,
+            color: Colors.white.withValues(alpha: 0.92),
+            size: 18,
+          ),
         ),
       ),
     );
@@ -905,8 +1125,20 @@ class _RingPainter extends CustomPainter {
     final startAngle = -math.pi / 2;
     final sweepAngle = math.pi * 2 * progress;
 
-    canvas.drawArc(rect.deflate(strokeWidth / 2), startAngle, sweepAngle, false, glowPaint);
-    canvas.drawArc(rect.deflate(strokeWidth / 2), startAngle, sweepAngle, false, progressPaint);
+    canvas.drawArc(
+      rect.deflate(strokeWidth / 2),
+      startAngle,
+      sweepAngle,
+      false,
+      glowPaint,
+    );
+    canvas.drawArc(
+      rect.deflate(strokeWidth / 2),
+      startAngle,
+      sweepAngle,
+      false,
+      progressPaint,
+    );
   }
 
   @override

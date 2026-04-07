@@ -1,3 +1,4 @@
+import 'package:bb/app/provider/companion_provider.dart';
 import 'package:bb/app/provider/hardware_monitor_provider.dart';
 import 'package:bb/app/view/home/home_page.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +11,13 @@ class ByteBuddyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<HardwareMonitorProvider>(
+        ChangeNotifierProvider(
           create: (_) => HardwareMonitorProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => CompanionProvider(
+            context.read<HardwareMonitorProvider>(),
+          ),
         ),
       ],
       child: MaterialApp(
